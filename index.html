@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>5 букв</title>
+
+<!-- PWA -->
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#ffd54f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="5 букв">
+
+<style>
+  :root {
+    --bg: #f0f0f0;
+    --cell-bg-empty: #f7f7f7;
+    --cell-border-empty: #c8c8c8;
+    --yellow: #ffd54f;
+    --yellow-border: #d4a72c;
+    --gray: #9e9e9e;
+    --gray-border: #7a7a7a;
+    --text: #222;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px; user-select: none;
+    min-height: 100vh;
+  }
+  h1 { font-size: 24px; margin: 4px 0 10px; font-weight: 800; }
+  #board {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 6px;
+    width: min(92vw, 360px);
+    aspect-ratio: 5 / 6;
+    margin-bottom: 10px;
+  }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .cell {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--cell-bg-empty);
+    border: 2px dashed var(--cell-border-empty);
+    border-radius: 10px;
+    font-size: clamp(22px, 8vw, 34px);
+    font-weight: 700;
+    text-transform: uppercase;
+    transition: background .15s, border-color .15s, color .15s;
+    color: var(--text);
+  }
+  .cell.filled { background: #fff; border: 2px solid #777; }
+  .cell.white  { background: #fff; border: 2px solid #444; font-weight: 900; }
+  .cell.yellow { background: var(--yellow); border: 2px solid var(--yellow-border); color: #222; }
+  .cell.gray   { background: var(--gray);   border: 2px solid var(--gray-border);   color: #fff; }
+  .cell.active { outline: 3px solid #1976d2; outline-offset: 2px; }
+
+  #msg {
+    min-height: 1.4em; font-size: 18px; font-weight: 600;
+    margin: 4px 0 8px; text-align: center; padding: 0 8px;
+  }
+
+  #keyboard {
+    display: flex; flex-direction: column; gap: 5px;
+    width: min(98vw, 460px);
+    margin-top: auto; padding-bottom: 6px;
+  }
+  .kb-row { display: flex; gap: 4px; }
+  .key {
+    flex: 1; background: #fff;
+    border: 1px solid #bbb; border-radius: 8px;
+    font-size: clamp(14px, 4vw, 17px); font-weight: 700;
+    padding: 12px 0; text-transform: uppercase;
+    cursor: pointer; color: #222;
+    font-family: inherit;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .key:active { background: #eee; }
+  .key.yellow { background: var(--yellow); border-color: var(--yellow-border); }
+  .key.white  { background: #fff; border-color: #444; font-weight: 900; }
+  .key.gray   { background: #cfcfcf; color: #888; border-color: #bbb; }
+  .key.enter  { flex: 3; background: #1976d2; color: #fff; border-color: #1976d2; font-size: 18px; }
+  .key.enter:active { background: #1565c0; }
+  .key.del { font-size: clamp(16px, 4.5vw, 20px); }
+
+  #restart {
+    margin-top: 14px; padding: 16px 32px;
+    font-size: 22px; font-weight: 800;
+    background: #1976d2; color: #fff;
+    border: none; border-radius: 12px; cursor: pointer;
+    display: none; font-family: inherit;
+  }
+  #restart:active { background: #1565c0; }
+
+  #controls {
+    display: flex; gap: 8px; width: min(98vw, 460px);
+    margin-top: 12px; padding-bottom: 8px;
+  }
+  #controls button {
+    flex: 1; padding: 12px 8px;
+    font-size: 17px; font-weight: 700;
+    background: #fff; color: #1976d2;
+    border: 2px solid #1976d2; border-radius: 10px;
+    cursor: pointer; font-family: inherit;
+    transition: background .15s;
+  }
+  #controls button:active { background: #e3f2fd; }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,.55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal[hidden] { display: none; }
+  .modal-box {
+    background: #fff; border-radius: 18px;
+    padding: 22px 22px 16px;
+    width: min(92vw, 360px);
+    box-shadow: 0 10px 30px rgba(0,0,0,.3);
+    text-align: center;
+  }
+  .modal-box h2 { margin: 0 0 14px; font-size: 24px; }
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 18px; padding: 10px 2px;
+    border-bottom: 1px solid #eee;
+  }
+  .stat-row:last-of-type { border-bottom: none; }
+  .stat-row b { font-size: 24px; color: #1976d2; }
+  .modal-box .modal-btn {
+    margin-top: 16px; width: 100%; padding: 14px;
+    font-size: 19px; font-weight: 700;
+    background: #1976d2; color: #fff;
+    border: none; border-radius: 12px;
+    cursor: pointer; font-family: inherit;
+  }
+  .modal-box .modal-btn:active { background: #1565c0; }
+  .reset-link {
+    margin-top: 10px; background: none; border: none;
+    color: #b00020; font-size: 14px;
+    text-decoration: underline; cursor: pointer;
+    font-family: inherit; padding: 6px;
+  }
+
+  @media (max-height: 720px) {
+    h1 { font-size: 18px; margin: 2px 0 6px; }
+    #board { gap: 4px; }
+    .row { gap: 4px; }
+    #msg { font-size: 16px; margin: 2px 0 6px; }
+    .key { padding: 9px 0; }
+    #controls button { padding: 10px 6px; font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>5 букв</h1>
+<div id="board"></div>
+<div id="msg">Введите слово из 5 букв</div>
+<div id="keyboard">
+  <div class="kb-row" id="kb-row-1"></div>
+  <div class="kb-row" id="kb-row-2"></div>
+  <div class="kb-row" id="kb-row-3"></div>
+  <div class="kb-row" id="kb-row-4"></div>
+</div>
+<button id="restart">Играть ещё раз</button>
+
+<div id="controls">
+  <button id="new-game" type="button">Новая игра</button>
+  <button id="stats-btn" type="button">Статистика</button>
+</div>
+
+<div id="stats-modal" class="modal" hidden>
+  <div class="modal-box">
+    <h2>Статистика</h2>
+    <div class="stat-row"><span>Сыграно партий</span><b id="stat-played">0</b></div>
+    <div class="stat-row"><span>Угадано слов</span><b id="stat-won">0</b></div>
+    <div class="stat-row"><span>Процент побед</span><b id="stat-pct">—</b></div>
+    <div class="stat-row"><span>Лучшая серия</span><b id="stat-streak">0</b></div>
+    <button id="stats-close" class="modal-btn" type="button">Закрыть</button>
+    <button id="stats-reset" class="reset-link" type="button">Сбросить статистику</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const WORDS = [
+    "АРБУЗ","БАНАН","БАТОН","БЕЛКА","БЕРЕГ","БИЛЕТ","БЛЮДО","БУКВА","БУЛКА",
+    "ВАГОН","ВЕНИК","ВЕТЕР","ВЕТКА","ВЕЧЕР","ВИЛКА","ВОЛНА","ВОРОН","ВЫБОР",
+    "ГЛИНА","ГОЛОС","ГОРОД","ГОРОХ","ГОРКА","ГРОЗА","ГРУША","ГУБКА",
+    "ДЕСНА","ДИВАН","ДОСКА","ДОЧКА","ДРАКА","ДУПЛО",
+    "ЖАЖДА","ЖАКЕТ","ЖИВОТ","ЖИРАФ",
+    "ЗАБОР","ЗАВОД","ЗАГАР","ЗАЙКА","ЗАКАТ","ЗАКОН","ЗАПАД","ЗАПАХ",
+    "ЗВЕНО","ЗЕБРА","ЗЕМЛЯ","ЗЕРНО","ЗНАМЯ",
+    "ИКОНА","ИСКРА",
+    "КАБАН","КАМИН","КАНАЛ","КАПЛЯ","КАРТА","КАССА","КАТОК","КЕФИР","КИОСК",
+    "КЛАСС","КЛЕЩИ","КЛОУН","КНИГА","КОВЕР","КОЗЕЛ","КОЛОС","КОМАР","КОМОД",
+    "КОНЕЦ","КОПЬЕ","КОРОБ","КОФТА","КОШКА","КРЫША","КУКЛА","КУЛАК","КУСОК",
+    "КУХНЯ",
+    "ЛАВКА","ЛАМПА","ЛАПША","ЛЕНТА","ЛИЛИЯ","ЛИМОН","ЛОДКА","ЛОЖКА","ЛУНКА",
+    "МАЙКА","МАРКА","МАСКА","МАСЛО","МАЧТА","МЕСТО","МЕСЯЦ","МЕТЛА","МЕТРО",
+    "МЕЧТА","МЕШОК","МИСКА","МОЛОТ","МОНАХ","МОРОЗ","МОТОР","МУЖИК","МУЗЕЙ",
+    "МЫШКА",
+    "НАВЕС","НАЛИМ","НАРОД","НАСОС","НЕДРА","НИТКА","НОЖИК","НОМЕР","НОРКА",
+    "НОСОК",
+    "ОБМАН","ОБРАЗ","ОБУВЬ","ОКЕАН","ОЛЕНЬ","ОПЕРА","ОСЕНЬ","ОСИНА","ОТДЫХ",
+    "ОХОТА",
+    "ПАЛЕЦ","ПАЛКА","ПАПКА","ПАРУС","ПАСТА","ПАУЗА","ПЕНАЛ","ПЕРЕЦ","ПЕСНЯ",
+    "ПЕСОК","ПЕТУХ","ПЕЧКА","ПИРОГ","ПЛАМЯ","ПЛАТА","ПЛЕЧО","ПЛИТА","ПОВАР",
+    "ПОЕЗД","ПОЛЕТ","ПОЛКА","ПОЛЮС","ПОРОГ","ПОРОХ","ПОТОК","ПОЧТА",
+    "ПРОБА","ПРЯЖА","ПТИЦА","ПУДРА","ПУЛЬС","ПУШКА","ПЧЕЛА","ПЯТКА","ПЯТНО",
+    "РАДИО","РАЗУМ","РАЙОН","РАМКА","РЕБРО","РЕДИС","РЕЧКА","РОБОТ","РОМАН",
+    "РОЯЛЬ","РУБИН","РУБЛЬ","РУКАВ","РУЛОН","РУЧЕЙ","РУЧКА","РЫБАК","РЫНОК",
+    "САДИК","САЛАТ","САЛЮТ","САНКИ","САПОГ","САХАР","СВЕЧА","СЕДЛО","СЕЗОН",
+    "СЕМЬЯ","СИНЯК","СИРОП","СКАЛА","СКВЕР","СКЛАД","СЛАВА","СЛЕЗА","СЛОВО",
+    "СЛУГА","СМЕНА","СМОЛА","СМЫСЛ","СОВЕТ","СОКОЛ","СОСЕД","СОСНА","СОСУД",
+    "СПИНА","СРЕДА","ССОРА","СТАДО","СТАРТ","СТВОЛ","СТЕНА","СТЕПЬ","СТИХИ",
+    "СТОЛБ","СТОПА","СТРАХ","СТРОЙ","СТРУЯ","СУМКА","СУТКИ","СХЕМА","СЦЕНА",
+    "ТАБУН","ТАЙГА","ТАЛИЯ","ТАНЕЦ","ТАЧКА","ТЕАТР","ТЕКСТ","ТЕПЛО","ТЕРЕМ",
+    "ТЕСТО","ТИТУЛ","ТКАНЬ","ТОВАР","ТОЛПА","ТОМАТ","ТОННА","ТОПОР","ТОЧКА",
+    "ТРАВА","ТРОПА","ТРУБА","ТУМАН","ТУФЛЯ","ТЫКВА",
+    "УДАЧА","УКРОП","УЛИЦА","УСПЕХ","УЧЕБА","УЩЕРБ",
+    "ФАКЕЛ","ФЕРМА","ФИЛЬМ","ФОКУС","ФОРМА","ФРУКТ",
+    "ХАЛАТ","ХВОСТ","ХОЛОД","ХОБОТ","ХОЛСТ","ХУТОР",
+    "ЦАПЛЯ","ЦЕНТР","ЦИФРА",
+    "ЧАЙКА","ЧАШКА","ЧЕРЕП","ЧЕРТА","ЧИСЛО","ЧУЛОК",
+    "ШАПКА","ШАРИК","ШАХТА","ШИШКА","ШКОЛА","ШЛЯПА","ШОССЕ","ШТОРА","ШУТКА",
+    "ЩЕНОК","ЩЕТКА","ЩЕПКА",
+    "ЭКРАН","ЯГОДА","ЯКОРЬ"
+  ];
+
+  const STORAGE_KEY = "5bukv_state_v2";
+  const STORAGE_VER = 2;
+  const STATS_KEY   = "5bukv_stats_v1";
+
+  const boardEl    = document.getElementById("board");
+  const msgEl      = document.getElementById("msg");
+  const restartBtn = document.getElementById("restart");
+  const newGameBtn = document.getElementById("new-game");
+  const statsBtn   = document.getElementById("stats-btn");
+  const statsModal = document.getElementById("stats-modal");
+  const statsClose = document.getElementById("stats-close");
+  const statsReset = document.getElementById("stats-reset");
+
+  let SECRET = "";
+  let guesses = [];
+  let currentRow = 0;
+  let currentGuess = "";
+  let gameOver = false;
+  let won = false;
+  let statsRecorded = false;
+
+  const cells = [];
+  for (let r = 0; r < 6; r++) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "row";
+    const rowCells = [];
+    for (let c = 0; c < 5; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      rowEl.appendChild(cell);
+      rowCells.push(cell);
+    }
+    boardEl.appendChild(rowEl);
+    cells.push(rowCells);
+  }
+
+  const KB_LAYOUT = ["ЙЦУКЕНГШЩЗХ","ФЫВАПРОЛДЖЭ","ЯЧСМИТЬБЮ"];
+  const kbRows = [
+    document.getElementById("kb-row-1"),
+    document.getElementById("kb-row-2"),
+    document.getElementById("kb-row-3"),
+    document.getElementById("kb-row-4")
+  ];
+
+  KB_LAYOUT.forEach((letters, idx) => {
+    letters.split("").forEach(ch => {
+      const k = document.createElement("button");
+      k.type = "button";
+      k.className = "key";
+      k.textContent = ch;
+      k.dataset.key = ch;
+      k.addEventListener("click", () => pressLetter(ch));
+      kbRows[idx].appendChild(k);
+    });
+  });
+
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className = "key del";
+  delBtn.textContent = "⌫";
+  delBtn.addEventListener("click", backspace);
+  kbRows[3].appendChild(delBtn);
+
+  const enterBtn = document.createElement("button");
+  enterBtn.type = "button";
+  enterBtn.className = "key enter";
+  enterBtn.textContent = "ВВОД";
+  enterBtn.addEventListener("click", submitGuess);
+  kbRows[3].appendChild(enterBtn);
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        v: STORAGE_VER,
+        secret: SECRET,
+        guesses: guesses.slice(),
+        currentGuess: currentGuess,
+        gameOver: gameOver,
+        won: won,
+        statsRecorded: statsRecorded
+      }));
+    } catch (e) {}
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s || s.v !== STORAGE_VER) return null;
+      if (typeof s.secret !== "string" || s.secret.length !== 5) return null;
+      if (!Array.isArray(s.guesses)) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  function clearState() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  }
+
+  const EMPTY_STATS = { played: 0, won: 0, streak: 0, maxStreak: 0 };
+
+  function loadStats() {
+    try {
+      const raw = localStorage.getItem(STATS_KEY);
+      if (!raw) return Object.assign({}, EMPTY_STATS);
+      const s = JSON.parse(raw);
+      return {
+        played:    Number(s.played)    || 0,
+        won:       Number(s.won)       || 0,
+        streak:    Number(s.streak)    || 0,
+        maxStreak: Number(s.maxStreak) || 0
+      };
+    } catch (e) { return Object.assign({}, EMPTY_STATS); }
+  }
+
+  function saveStats(s) {
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch (e) {}
+  }
+
+  function recordResult(isWin) {
+    const s = loadStats();
+    s.played += 1;
+    if (isWin) {
+      s.won += 1;
+      s.streak += 1;
+      if (s.streak > s.maxStreak) s.maxStreak = s.streak;
+    } else {
+      s.streak = 0;
+    }
+    saveStats(s);
+  }
+
+  function updateKeyboard(guess, result) {
+    document.querySelectorAll(".key[data-key]").forEach(el => {
+      const ch = el.dataset.key;
+      let found = false;
+      let best = "gray";
+      for (let i = 0; i < 5; i++) {
+        if (guess[i] !== ch) continue;
+        found = true;
+        if (result[i] === "yellow") { best = "yellow"; break; }
+        if (result[i] === "white") best = "white";
+      }
+      if (!found) return;
+      if (best === "yellow") {
+        el.classList.remove("white", "gray");
+        el.classList.add("yellow");
+      } else if (best === "white") {
+        if (!el.classList.contains("yellow")) {
+          el.classList.remove("gray");
+          el.classList.add("white");
+        }
+      } else {
+        if (!el.classList.contains("yellow") && !el.classList.contains("white")) {
+          el.classList.add("gray");
+        }
+      }
+    });
+  }
+
+  function resetKeyboardColors() {
+    document.querySelectorAll(".key[data-key]").forEach(el => {
+      el.classList.remove("yellow", "white", "gray");
+    });
+  }
+
+  function renderGuess(rowIndex, guess) {
+    const secret = SECRET.split("");
+    const g = guess.split("");
+    const result = new Array(5).fill("gray");
+    const usedSecret = new Array(5).fill(false);
+
+    for (let i = 0; i < 5; i++) {
+      if (g[i] === secret[i]) {
+        result[i] = "yellow";
+        usedSecret[i] = true;
+      }
+    }
+    for (let i = 0; i < 5; i++) {
+      if (result[i] === "yellow") continue;
+      for (let j = 0; j < 5; j++) {
+        if (!usedSecret[j] && g[i] === secret[j]) {
+          result[i] = "white";
+          usedSecret[j] = true;
+          break;
+        }
+      }
+    }
+
+    const row = cells[rowIndex];
+    for (let i = 0; i < 5; i++) {
+      row[i].classList.remove("filled", "active");
+      row[i].classList.add(result[i]);
+      row[i].textContent = g[i];
+    }
+
+    updateKeyboard(g, result);
+    return result;
+  }
+
+  function renderCurrentRow() {
+    if (currentRow >= 6) return;
+    const row = cells[currentRow];
+    for (let i = 0; i < 5; i++) {
+      const ch = currentGuess[i];
+      row[i].textContent = ch || "";
+      row[i].classList.toggle("filled", !!ch);
+    }
+    updateActiveCell();
+  }
+
+  function updateActiveCell() {
+    cells.forEach((row, r) =>
+      row.forEach((cell, c) => {
+        cell.classList.toggle(
+          "active",
+          !gameOver && r === currentRow && c === currentGuess.length
+        );
+      })
+    );
+  }
+
+  function pressLetter(ch) {
+    if (gameOver || currentGuess.length >= 5) return;
+    currentGuess += ch;
+    renderCurrentRow();
+    saveState();
+  }
+
+  function backspace() {
+    if (gameOver || currentGuess.length === 0) return;
+    currentGuess = currentGuess.slice(0, -1);
+    renderCurrentRow();
+    saveState();
+  }
+
+  function submitGuess() {
+    if (gameOver) return;
+    if (currentGuess.length !== 5) {
+      msgEl.textContent = "Нужно ровно 5 букв";
+      return;
+    }
+
+    const result = renderGuess(currentRow, currentGuess);
+    guesses.push(currentGuess);
+
+    const allYellow = result.every(r => r === "yellow");
+    currentGuess = "";
+    currentRow++;
+
+    if (allYellow) {
+      gameOver = true;
+      won = true;
+      msgEl.textContent = "Поздравляем! Вы угадали слово! 🎉";
+      restartBtn.style.display = "inline-block";
+      if (!statsRecorded) { recordResult(true); statsRecorded = true; }
+    } else if (currentRow === 6) {
+      gameOver = true;
+      won = false;
+      msgEl.textContent = "Попытки закончились. Слово было: " + SECRET;
+      restartBtn.style.display = "inline-block";
+      if (!statsRecorded) { recordResult(false); statsRecorded = true; }
+    } else {
+      msgEl.textContent = "Попробуйте ещё раз";
+    }
+
+    if (currentRow < 6) renderCurrentRow();
+    updateActiveCell();
+    saveState();
+  }
+
+  function pickWord() {
+    return WORDS[Math.floor(Math.random() * WORDS.length)];
+  }
+
+  function clearBoard() {
+    cells.forEach(row => row.forEach(cell => {
+      cell.className = "cell";
+      cell.textContent = "";
+    }));
+    resetKeyboardColors();
+  }
+
+  function initNewGame() {
+    SECRET = pickWord();
+    guesses = [];
+    currentRow = 0;
+    currentGuess = "";
+    gameOver = false;
+    won = false;
+    statsRecorded = false;
+
+    clearBoard();
+
+    msgEl.textContent = "Введите слово из 5 букв";
+    restartBtn.style.display = "none";
+    renderCurrentRow();
+    updateActiveCell();
+    saveState();
+  }
+
+  function initFromSaved(saved) {
+    SECRET = saved.secret;
+    guesses = [];
+    clearBoard();
+
+    saved.guesses.forEach((g, idx) => {
+      if (typeof g === "string" && g.length === 5 && idx < 6) {
+        renderGuess(idx, g);
+        guesses.push(g);
+      }
+    });
+
+    currentRow = guesses.length;
+    currentGuess = typeof saved.currentGuess === "string"
+      ? saved.currentGuess.slice(0, 5)
+      : "";
+    gameOver = !!saved.gameOver;
+    won = !!saved.won;
+    statsRecorded = !!saved.statsRecorded;
+
+    if (gameOver) {
+      msgEl.textContent = won
+        ? "Поздравляем! Вы угадали слово! 🎉"
+        : "Попытки закончились. Слово было: " + SECRET;
+      restartBtn.style.display = "inline-block";
+    } else if (guesses.length > 0) {
+      msgEl.textContent = "Попробуйте ещё раз";
+    } else {
+      msgEl.textContent = "Введите слово из 5 букв";
+    }
+
+    renderCurrentRow();
+    updateActiveCell();
+  }
+
+  newGameBtn.addEventListener("click", () => {
+    const inProgress = !gameOver && (guesses.length > 0 || currentGuess.length > 0);
+    if (inProgress) {
+      const ok = confirm("Начать новую игру? Текущая партия будет потеряна.");
+      if (!ok) return;
+    }
+    clearState();
+    initNewGame();
+  });
+
+  restartBtn.addEventListener("click", () => {
+    clearState();
+    initNewGame();
+  });
+
+  function showStats() {
+    const s = loadStats();
+    document.getElementById("stat-played").textContent = s.played;
+    document.getElementById("stat-won").textContent    = s.won;
+    document.getElementById("stat-streak").textContent = s.maxStreak;
+    document.getElementById("stat-pct").textContent =
+      s.played > 0 ? Math.round(s.won * 100 / s.played) + "%" : "—";
+    statsModal.hidden = false;
+  }
+
+  function hideStats() {
+    statsModal.hidden = true;
+  }
+
+  statsBtn.addEventListener("click", showStats);
+  statsClose.addEventListener("click", hideStats);
+
+  statsModal.addEventListener("click", (e) => {
+    if (e.target === statsModal) hideStats();
+  });
+
+  statsReset.addEventListener("click", () => {
+    const ok = confirm("Сбросить всю статистику? Это действие нельзя отменить.");
+    if (!ok) return;
+    saveStats(Object.assign({}, EMPTY_STATS));
+    showStats();
+  });
+
+  const saved = loadState();
+  if (saved) {
+    initFromSaved(saved);
+  } else {
+    initNewGame();
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (!statsModal.hidden) {
+      if (e.key === "Escape") hideStats();
+      return;
+    }
+    if (gameOver) return;
+    if (e.key === "Enter")     { e.preventDefault(); submitGuess(); return; }
+    if (e.key === "Backspace") { e.preventDefault(); backspace(); return; }
+    let ch = e.key.toUpperCase();
+    if (ch === "Ё") ch = "Е";
+    if (/^[А-Я]$/.test(ch)) pressLetter(ch);
+  });
+})();
+</script>
+
+<!-- PWA: регистрация service worker для офлайн-работы -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>

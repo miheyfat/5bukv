@@ -2,10 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>5 букв</title>
 
-<!-- PWA -->
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -27,93 +26,155 @@
     --text: #222;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; margin: 0; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    height: 100svh;
+    gap: 6px;
+    padding: 6px;
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
     background: var(--bg);
     color: var(--text);
-    display: flex; flex-direction: column; align-items: center;
-    padding: 10px; user-select: none;
-    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    user-select: none;
   }
-  h1 { font-size: 24px; margin: 4px 0 10px; font-weight: 800; }
+
+  h1 {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: clamp(15px, 3.6vw, 22px);
+    font-weight: 800;
+  }
+
+  /* Область под поле — забирает всё оставшееся место */
+  #board-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
   #board {
-    display: grid;
-    grid-template-rows: repeat(6, 1fr);
-    gap: 6px;
+    /* стартовый размер, чтобы не было пустоты до срабатывания JS */
     width: min(92vw, 360px);
     aspect-ratio: 5 / 6;
-    margin-bottom: 10px;
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 4px;
   }
-  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
   .cell {
     display: flex; align-items: center; justify-content: center;
     background: var(--cell-bg-empty);
     border: 2px dashed var(--cell-border-empty);
-    border-radius: 10px;
-    font-size: clamp(22px, 8vw, 34px);
+    border-radius: 8px;
+    font-size: var(--cell-font, 24px);
     font-weight: 700;
     text-transform: uppercase;
-    transition: background .15s, border-color .15s, color .15s;
     color: var(--text);
+    transition: background .15s, border-color .15s, color .15s;
+    min-width: 0;
+    min-height: 0;
   }
   .cell.filled { background: #fff; border: 2px solid #777; }
   .cell.white  { background: #fff; border: 2px solid #444; font-weight: 900; }
   .cell.yellow { background: var(--yellow); border: 2px solid var(--yellow-border); color: #222; }
   .cell.gray   { background: var(--gray);   border: 2px solid var(--gray-border);   color: #fff; }
-  .cell.active { outline: 3px solid #1976d2; outline-offset: 2px; }
+  .cell.active { outline: 3px solid #1976d2; outline-offset: 1px; }
 
+  /* Сообщение — всегда видно, над клавиатурой, фиксированной высоты */
   #msg {
-    min-height: 1.4em; font-size: 18px; font-weight: 600;
-    margin: 4px 0 8px; text-align: center; padding: 0 8px;
+    flex: 0 0 auto;
+    min-height: 54px;
+    width: min(100%, 460px);
+    padding: 4px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background .2s, color .2s;
+  }
+  #msg.win  { background: #c8e6c9; color: #1b5e20; }
+  #msg.lose { background: #ffcdd2; color: #b71c1c; }
+  #msg .small { font-size: 13px; font-weight: 500; opacity: 0.85; line-height: 1.2; }
+  #msg .word  {
+    font-size: 24px; font-weight: 900; letter-spacing: 3px;
+    line-height: 1.15; margin-top: 2px;
   }
 
   #keyboard {
-    display: flex; flex-direction: column; gap: 5px;
-    width: min(98vw, 460px);
-    margin-top: auto; padding-bottom: 6px;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: min(100%, 460px);
   }
   .kb-row { display: flex; gap: 4px; }
   .key {
-    flex: 1; background: #fff;
-    border: 1px solid #bbb; border-radius: 8px;
-    font-size: clamp(14px, 4vw, 17px); font-weight: 700;
-    padding: 12px 0; text-transform: uppercase;
-    cursor: pointer; color: #222;
+    flex: 1;
+    background: #fff;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    font-size: clamp(13px, 3.6vw, 17px);
+    font-weight: 700;
+    padding: 10px 0;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: #222;
     font-family: inherit;
+    touch-action: manipulation;
     transition: background .15s, color .15s, border-color .15s;
   }
   .key:active { background: #eee; }
   .key.yellow { background: var(--yellow); border-color: var(--yellow-border); }
   .key.white  { background: #fff; border-color: #444; font-weight: 900; }
   .key.gray   { background: #cfcfcf; color: #888; border-color: #bbb; }
-  .key.enter  { flex: 3; background: #1976d2; color: #fff; border-color: #1976d2; font-size: 18px; }
+  .key.enter  { flex: 3; background: #1976d2; color: #fff; border-color: #1976d2; font-size: clamp(14px, 4vw, 18px); }
   .key.enter:active { background: #1565c0; }
-  .key.del { font-size: clamp(16px, 4.5vw, 20px); }
-
-  #restart {
-    margin-top: 14px; padding: 16px 32px;
-    font-size: 22px; font-weight: 800;
-    background: #1976d2; color: #fff;
-    border: none; border-radius: 12px; cursor: pointer;
-    display: none; font-family: inherit;
-  }
-  #restart:active { background: #1565c0; }
+  .key.del    { font-size: clamp(15px, 4.2vw, 20px); }
 
   #controls {
-    display: flex; gap: 8px; width: min(98vw, 460px);
-    margin-top: 12px; padding-bottom: 8px;
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    width: min(100%, 460px);
   }
   #controls button {
-    flex: 1; padding: 12px 8px;
-    font-size: 17px; font-weight: 700;
-    background: #fff; color: #1976d2;
-    border: 2px solid #1976d2; border-radius: 10px;
-    cursor: pointer; font-family: inherit;
-    transition: background .15s;
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 16px;
+    font-weight: 700;
+    background: #fff;
+    color: #1976d2;
+    border: 2px solid #1976d2;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    touch-action: manipulation;
+    transition: background .15s, color .15s;
   }
   #controls button:active { background: #e3f2fd; }
+  #controls button.primary { background: #1976d2; color: #fff; }
+  #controls button.primary:active { background: #1565c0; }
 
+  /* Модальное окно статистики */
   .modal {
     position: fixed; inset: 0; z-index: 100;
     background: rgba(0,0,0,.55);
@@ -131,14 +192,14 @@
   .modal-box h2 { margin: 0 0 14px; font-size: 24px; }
   .stat-row {
     display: flex; justify-content: space-between; align-items: baseline;
-    font-size: 18px; padding: 10px 2px;
+    font-size: 17px; padding: 9px 2px;
     border-bottom: 1px solid #eee;
   }
   .stat-row:last-of-type { border-bottom: none; }
-  .stat-row b { font-size: 24px; color: #1976d2; }
+  .stat-row b { font-size: 22px; color: #1976d2; }
   .modal-box .modal-btn {
-    margin-top: 16px; width: 100%; padding: 14px;
-    font-size: 19px; font-weight: 700;
+    margin-top: 16px; width: 100%; padding: 13px;
+    font-size: 18px; font-weight: 700;
     background: #1976d2; color: #fff;
     border: none; border-radius: 12px;
     cursor: pointer; font-family: inherit;
@@ -151,20 +212,24 @@
     font-family: inherit; padding: 6px;
   }
 
-  @media (max-height: 720px) {
-    h1 { font-size: 18px; margin: 2px 0 6px; }
-    #board { gap: 4px; }
-    .row { gap: 4px; }
-    #msg { font-size: 16px; margin: 2px 0 6px; }
-    .key { padding: 9px 0; }
-    #controls button { padding: 10px 6px; font-size: 16px; }
+  /* Совсем низкие экраны — чуть ужимаем второстепенные элементы */
+  @media (max-height: 640px) {
+    body { gap: 4px; padding: 4px; }
+    h1 { font-size: 14px; }
+    #msg { min-height: 46px; font-size: 14px; }
+    #msg .small { font-size: 12px; }
+    #msg .word  { font-size: 20px; }
+    .key { padding: 8px 0; font-size: 13px; }
+    #controls button { padding: 8px 6px; font-size: 14px; }
   }
 </style>
 </head>
 <body>
 
 <h1>5 букв</h1>
-<div id="board"></div>
+<div id="board-wrap">
+  <div id="board"></div>
+</div>
 <div id="msg">Введите слово из 5 букв</div>
 <div id="keyboard">
   <div class="kb-row" id="kb-row-1"></div>
@@ -172,8 +237,6 @@
   <div class="kb-row" id="kb-row-3"></div>
   <div class="kb-row" id="kb-row-4"></div>
 </div>
-<button id="restart">Играть ещё раз</button>
-
 <div id="controls">
   <button id="new-game" type="button">Новая игра</button>
   <button id="stats-btn" type="button">Статистика</button>
@@ -245,8 +308,8 @@
   const STATS_KEY   = "5bukv_stats_v1";
 
   const boardEl    = document.getElementById("board");
+  const boardWrap  = document.getElementById("board-wrap");
   const msgEl      = document.getElementById("msg");
-  const restartBtn = document.getElementById("restart");
   const newGameBtn = document.getElementById("new-game");
   const statsBtn   = document.getElementById("stats-btn");
   const statsModal = document.getElementById("stats-modal");
@@ -261,6 +324,7 @@
   let won = false;
   let statsRecorded = false;
 
+  /* ====== Поле 6×5 ====== */
   const cells = [];
   for (let r = 0; r < 6; r++) {
     const rowEl = document.createElement("div");
@@ -276,6 +340,7 @@
     cells.push(rowCells);
   }
 
+  /* ====== Клавиатура ====== */
   const KB_LAYOUT = ["ЙЦУКЕНГШЩЗХ","ФЫВАПРОЛДЖЭ","ЯЧСМИТЬБЮ"];
   const kbRows = [
     document.getElementById("kb-row-1"),
@@ -283,7 +348,6 @@
     document.getElementById("kb-row-3"),
     document.getElementById("kb-row-4")
   ];
-
   KB_LAYOUT.forEach((letters, idx) => {
     letters.split("").forEach(ch => {
       const k = document.createElement("button");
@@ -295,7 +359,6 @@
       kbRows[idx].appendChild(k);
     });
   });
-
   const delBtn = document.createElement("button");
   delBtn.type = "button";
   delBtn.className = "key del";
@@ -310,6 +373,29 @@
   enterBtn.addEventListener("click", submitGuess);
   kbRows[3].appendChild(enterBtn);
 
+  /* ====== Вписать поле в доступное место ====== */
+  function fitBoard() {
+    const wrapW = boardWrap.clientWidth;
+    const wrapH = boardWrap.clientHeight;
+    if (wrapW <= 0 || wrapH <= 0) return;
+    // пропорции поля 5:6
+    const sizeW = Math.min(wrapW, wrapH * 5 / 6);
+    const sizeH = sizeW * 6 / 5;
+    boardEl.style.width  = Math.floor(sizeW) + "px";
+    boardEl.style.height = Math.floor(sizeH) + "px";
+    // размер буквы под размер клетки
+    const gap = 4;
+    const cellW = (sizeW - gap * 4) / 5;
+    const fontSize = Math.max(13, Math.round(cellW * 0.55));
+    boardEl.style.setProperty("--cell-font", fontSize + "px");
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(fitBoard).observe(boardWrap);
+  }
+  window.addEventListener("resize", fitBoard);
+  window.addEventListener("orientationchange", fitBoard);
+
+  /* ====== Хранилище: партия ====== */
   function saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -340,6 +426,7 @@
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   }
 
+  /* ====== Хранилище: статистика ====== */
   const EMPTY_STATS = { played: 0, won: 0, streak: 0, maxStreak: 0 };
 
   function loadStats() {
@@ -373,6 +460,7 @@
     saveStats(s);
   }
 
+  /* ====== Подсветка клавиатуры ====== */
   function updateKeyboard(guess, result) {
     document.querySelectorAll(".key[data-key]").forEach(el => {
       const ch = el.dataset.key;
@@ -407,6 +495,7 @@
     });
   }
 
+  /* ====== Отрисовка одной попытки ====== */
   function renderGuess(rowIndex, guess) {
     const secret = SECRET.split("");
     const g = guess.split("");
@@ -436,7 +525,6 @@
       row[i].classList.add(result[i]);
       row[i].textContent = g[i];
     }
-
     updateKeyboard(g, result);
     return result;
   }
@@ -463,6 +551,13 @@
     );
   }
 
+  /* ====== Сообщения ====== */
+  function setMessage(html, cls) {
+    msgEl.innerHTML = html;
+    msgEl.className = cls || "";
+  }
+
+  /* ====== Ввод ====== */
   function pressLetter(ch) {
     if (gameOver || currentGuess.length >= 5) return;
     currentGuess += ch;
@@ -480,7 +575,7 @@
   function submitGuess() {
     if (gameOver) return;
     if (currentGuess.length !== 5) {
-      msgEl.textContent = "Нужно ровно 5 букв";
+      setMessage("Нужно ровно 5 букв");
       return;
     }
 
@@ -494,17 +589,21 @@
     if (allYellow) {
       gameOver = true;
       won = true;
-      msgEl.textContent = "Поздравляем! Вы угадали слово! 🎉";
-      restartBtn.style.display = "inline-block";
+      setMessage("Поздравляем! Вы угадали слово! 🎉", "win");
+      showGameOverUI();
       if (!statsRecorded) { recordResult(true); statsRecorded = true; }
     } else if (currentRow === 6) {
       gameOver = true;
       won = false;
-      msgEl.textContent = "Попытки закончились. Слово было: " + SECRET;
-      restartBtn.style.display = "inline-block";
+      setMessage(
+        '<div class="small">Попытки закончились. Слово было:</div>' +
+        '<div class="word">' + SECRET + '</div>',
+        "lose"
+      );
+      showGameOverUI();
       if (!statsRecorded) { recordResult(false); statsRecorded = true; }
     } else {
-      msgEl.textContent = "Попробуйте ещё раз";
+      setMessage("Попробуйте ещё раз");
     }
 
     if (currentRow < 6) renderCurrentRow();
@@ -512,6 +611,17 @@
     saveState();
   }
 
+  /* ====== Кнопка «Новая игра» / «Играть ещё раз» ====== */
+  function showGameOverUI() {
+    newGameBtn.textContent = "Играть ещё раз";
+    newGameBtn.classList.add("primary");
+  }
+  function hideGameOverUI() {
+    newGameBtn.textContent = "Новая игра";
+    newGameBtn.classList.remove("primary");
+  }
+
+  /* ====== Новая / восстановленная партия ====== */
   function pickWord() {
     return WORDS[Math.floor(Math.random() * WORDS.length)];
   }
@@ -534,12 +644,13 @@
     statsRecorded = false;
 
     clearBoard();
+    setMessage("Введите слово из 5 букв");
+    hideGameOverUI();
 
-    msgEl.textContent = "Введите слово из 5 букв";
-    restartBtn.style.display = "none";
     renderCurrentRow();
     updateActiveCell();
     saveState();
+    fitBoard();
   }
 
   function initFromSaved(saved) {
@@ -556,27 +667,36 @@
 
     currentRow = guesses.length;
     currentGuess = typeof saved.currentGuess === "string"
-      ? saved.currentGuess.slice(0, 5)
-      : "";
+      ? saved.currentGuess.slice(0, 5) : "";
     gameOver = !!saved.gameOver;
     won = !!saved.won;
     statsRecorded = !!saved.statsRecorded;
 
     if (gameOver) {
-      msgEl.textContent = won
-        ? "Поздравляем! Вы угадали слово! 🎉"
-        : "Попытки закончились. Слово было: " + SECRET;
-      restartBtn.style.display = "inline-block";
+      if (won) {
+        setMessage("Поздравляем! Вы угадали слово! 🎉", "win");
+      } else {
+        setMessage(
+          '<div class="small">Попытки закончились. Слово было:</div>' +
+          '<div class="word">' + SECRET + '</div>',
+          "lose"
+        );
+      }
+      showGameOverUI();
     } else if (guesses.length > 0) {
-      msgEl.textContent = "Попробуйте ещё раз";
+      setMessage("Попробуйте ещё раз");
+      hideGameOverUI();
     } else {
-      msgEl.textContent = "Введите слово из 5 букв";
+      setMessage("Введите слово из 5 букв");
+      hideGameOverUI();
     }
 
     renderCurrentRow();
     updateActiveCell();
+    fitBoard();
   }
 
+  /* ====== Кнопки ====== */
   newGameBtn.addEventListener("click", () => {
     const inProgress = !gameOver && (guesses.length > 0 || currentGuess.length > 0);
     if (inProgress) {
@@ -587,11 +707,7 @@
     initNewGame();
   });
 
-  restartBtn.addEventListener("click", () => {
-    clearState();
-    initNewGame();
-  });
-
+  /* ====== Статистика ====== */
   function showStats() {
     const s = loadStats();
     document.getElementById("stat-played").textContent = s.played;
@@ -601,18 +717,13 @@
       s.played > 0 ? Math.round(s.won * 100 / s.played) + "%" : "—";
     statsModal.hidden = false;
   }
-
-  function hideStats() {
-    statsModal.hidden = true;
-  }
+  function hideStats() { statsModal.hidden = true; }
 
   statsBtn.addEventListener("click", showStats);
   statsClose.addEventListener("click", hideStats);
-
   statsModal.addEventListener("click", (e) => {
     if (e.target === statsModal) hideStats();
   });
-
   statsReset.addEventListener("click", () => {
     const ok = confirm("Сбросить всю статистику? Это действие нельзя отменить.");
     if (!ok) return;
@@ -620,6 +731,7 @@
     showStats();
   });
 
+  /* ====== Старт ====== */
   const saved = loadState();
   if (saved) {
     initFromSaved(saved);
@@ -627,6 +739,7 @@
     initNewGame();
   }
 
+  /* Физическая клавиатура */
   document.addEventListener("keydown", (e) => {
     if (!statsModal.hidden) {
       if (e.key === "Escape") hideStats();
@@ -639,10 +752,13 @@
     if (ch === "Ё") ch = "Е";
     if (/^[А-Я]$/.test(ch)) pressLetter(ch);
   });
+
+  // Первичная примерка после отрисовки
+  requestAnimationFrame(fitBoard);
 })();
 </script>
 
-<!-- PWA: регистрация service worker для офлайн-работы -->
+<!-- PWA: офлайн-работа -->
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

@@ -50,14 +50,9 @@
     user-select: none;
   }
 
-  h1 {
-    flex: 0 0 auto;
-    margin: 0;
-    font-size: clamp(15px, 3.6vw, 22px);
-    font-weight: 800;
-  }
-
-  /* Область под поле — забирает всё оставшееся место */
+  /* Область под поле — забирает всё свободное место.
+     Внутренний отступ нужен, чтобы синяя обводка активной
+     клетки не обрезалась по краям контейнера. */
   #board-wrap {
     flex: 1 1 0;
     min-height: 0;
@@ -66,9 +61,9 @@
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    padding: 6px;
   }
   #board {
-    /* стартовый размер, чтобы не было пустоты до срабатывания JS */
     width: min(92vw, 360px);
     aspect-ratio: 5 / 6;
     display: grid;
@@ -95,7 +90,6 @@
   .cell.gray   { background: var(--gray);   border: 2px solid var(--gray-border);   color: #fff; }
   .cell.active { outline: 3px solid #1976d2; outline-offset: 1px; }
 
-  /* Сообщение — всегда видно, над клавиатурой, фиксированной высоты */
   #msg {
     flex: 0 0 auto;
     min-height: 54px;
@@ -174,7 +168,6 @@
   #controls button.primary { background: #1976d2; color: #fff; }
   #controls button.primary:active { background: #1565c0; }
 
-  /* Модальное окно статистики */
   .modal {
     position: fixed; inset: 0; z-index: 100;
     background: rgba(0,0,0,.55);
@@ -212,10 +205,9 @@
     font-family: inherit; padding: 6px;
   }
 
-  /* Совсем низкие экраны — чуть ужимаем второстепенные элементы */
   @media (max-height: 640px) {
     body { gap: 4px; padding: 4px; }
-    h1 { font-size: 14px; }
+    #board-wrap { padding: 5px; }
     #msg { min-height: 46px; font-size: 14px; }
     #msg .small { font-size: 12px; }
     #msg .word  { font-size: 20px; }
@@ -226,7 +218,6 @@
 </head>
 <body>
 
-<h1>5 букв</h1>
 <div id="board-wrap">
   <div id="board"></div>
 </div>
@@ -306,6 +297,7 @@
   const STORAGE_KEY = "5bukv_state_v2";
   const STORAGE_VER = 2;
   const STATS_KEY   = "5bukv_stats_v1";
+  const BOARD_PAD   = 6; // должен совпадать с padding у #board-wrap
 
   const boardEl    = document.getElementById("board");
   const boardWrap  = document.getElementById("board-wrap");
@@ -373,17 +365,20 @@
   enterBtn.addEventListener("click", submitGuess);
   kbRows[3].appendChild(enterBtn);
 
-  /* ====== Вписать поле в доступное место ====== */
+  /* ====== Вписать поле в доступное место ======
+     Учитываем padding у #board-wrap, чтобы синяя обводка
+     активной клетки не обрезалась по краям. */
   function fitBoard() {
-    const wrapW = boardWrap.clientWidth;
-    const wrapH = boardWrap.clientHeight;
+    const wrapW = boardWrap.clientWidth  - BOARD_PAD * 2;
+    const wrapH = boardWrap.clientHeight - BOARD_PAD * 2;
     if (wrapW <= 0 || wrapH <= 0) return;
-    // пропорции поля 5:6
+
     const sizeW = Math.min(wrapW, wrapH * 5 / 6);
     const sizeH = sizeW * 6 / 5;
+
     boardEl.style.width  = Math.floor(sizeW) + "px";
     boardEl.style.height = Math.floor(sizeH) + "px";
-    // размер буквы под размер клетки
+
     const gap = 4;
     const cellW = (sizeW - gap * 4) / 5;
     const fontSize = Math.max(13, Math.round(cellW * 0.55));
@@ -753,12 +748,10 @@
     if (/^[А-Я]$/.test(ch)) pressLetter(ch);
   });
 
-  // Первичная примерка после отрисовки
   requestAnimationFrame(fitBoard);
 })();
 </script>
 
-<!-- PWA: офлайн-работа -->
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
